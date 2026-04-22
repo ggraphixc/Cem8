@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management Console | CE Benin Zone 1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
+        code, .mono { font-family: 'JetBrains Mono', monospace; }
+        .active-link { background: #eff6ff; color: #2563eb; border-right: 4px solid #2563eb; font-weight: 800; }
+        .section-content { display: none; }
+        .section-content.active { display: block; }
+        #activity-log, #presence-list, #admin-chat-box { scrollbar-width: thin; scrollbar-color: #e2e8f0 transparent; }
+        #admin-chat-box::-webkit-scrollbar { width: 4px; }
+        #admin-chat-box::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+        .role-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+        .role-super { background: #fef9c3; color: #854d0e; }
+        .role-stream { background: #dcfce7; color: #14532d; }
+        .role-mod { background: #ede9fe; color: #5b21b6; }
+        .role-default { background: #f1f5f9; color: #475569; }
+        .nav-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 24px; font-weight: 600; font-size: 13px; color: #94a3b8; transition: all 0.15s; border-right: 4px solid transparent; cursor: pointer; background: none; border-top: none; border-left: none; border-bottom: none; text-align: left; }
+        .nav-item:hover { color: #334155; background: #f8fafc; }
+        .nav-item.hidden-by-role { display: none !important; }
+        .restricted-overlay { position: absolute; inset: 0; background: rgba(248,250,252,0.9); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 1rem; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .section-content.active { animation: fadeInUp 0.2s ease; }
+        .stat-card { background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    </style>
+</head>
+<body class="text-slate-800 flex h-screen overflow-hidden">
+
+    <div id="admin-lock" class="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 z-[200] flex items-center justify-center p-4 md:p-6">
+        <div class="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full">
+            <div class="flex items-center gap-3 mb-8">
+                <div id="lock-brand-icon" class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-sm brand-bg overflow-hidden">CE</div>
+                <div>
+                    <h2 class="text-xl font-black text-slate-900 tracking-tight">Admin Portal</h2>
+                    <p class="text-xs text-slate-400 font-medium">CE Benin Zone 1 — Management</p>
+                </div>
+            </div>
+            <div class="space-y-3 mb-6">
+                <input type="text" id="admin-user" placeholder="Username" class="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-blue-600 transition text-sm font-medium">
+                <input type="password" id="admin-key" placeholder="Password" onkeydown="if(event.key==='Enter')checkAccess(document.getElementById('login-btn'))" class="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-blue-600 transition text-sm font-medium">
+            </div>
+            <p id="login-error" class="text-red-500 text-xs font-semibold mb-3 hidden text-center"></p>
+            <button onclick="checkAccess(this)" id="login-btn" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition active:scale-95 brand-bg brand-shadow">
+                Secure Login →
+            </button>
+        </div>
+    </div>
+
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-slate-900/50 z-[140] hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    <aside id="admin-sidebar" class="fixed inset-y-0 left-0 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-[150] w-64 bg-white border-r border-slate-100 flex flex-col shrink-0 h-full">
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+            <div class="flex items-center gap-2.5">
+                <div id="sidebar-icon" class="w-8 h-8 bg-blue-600 rounded-lg shadow-md brand-bg flex items-center justify-center text-white font-black text-xs overflow-hidden">CE</div>
+                <span id="sidebar-brand-name" class="font-black text-base tracking-tight brand-text uppercase text-blue-600">CE ADMIN</span>
+            </div>
+            <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 p-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        </div>
+        <div class="px-5 pb-3">
+            <div id="target-event" class="text-[9px] text-slate-400 font-bold uppercase bg-slate-50 py-1.5 px-3 rounded-lg tracking-wide truncate mt-3">No Event Selected</div>
+        </div>
+
+        <nav class="flex-1 py-4 space-y-0.5 overflow-y-auto">
+            <button onclick="showSection('overview'); toggleSidebar(true)" id="nav-overview" class="nav-item active-link"><span class="text-base">📊</span> <span>Overview</span></button>
+            <button onclick="showSection('homepage'); toggleSidebar(true)" id="nav-homepage" class="nav-item"><span class="text-base">🏠</span> <span>Homepage</span></button>
+            <button onclick="showSection('pages'); toggleSidebar(true)" id="nav-pages" class="nav-item"><span class="text-base">📺</span> <span>Events</span></button>
+            <button onclick="showSection('streaming'); toggleSidebar(true)" id="nav-streaming" class="nav-item"><span class="text-base">🎛️</span> <span>Live Control</span></button>
+            <button onclick="showSection('account'); toggleSidebar(true)" id="nav-account" class="nav-item"><span class="text-base">👥</span> <span>Accounts</span></button>
+            <button onclick="showSection('settings'); toggleSidebar(true)" id="nav-settings" class="nav-item"><span class="text-base">⚙️</span> <span>Settings</span></button>
+        </nav>
+
+        <div class="p-5 border-t border-slate-100 bg-slate-50/50 space-y-2">
+            <p class="text-[10px] text-slate-400 font-bold uppercase">Logged in as</p>
+            <p id="current-admin-name" class="text-sm font-bold text-slate-800 truncate">...</p>
+            <div id="current-role-badge" class="role-badge role-default">Loading...</div>
+            <button onclick="runWithLoader(this, 'Logging out...', logoutAdmin)" class="text-[11px] font-bold text-red-400 uppercase hover:text-red-600 transition pt-1">⬅ Secure Logout</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto flex flex-col relative w-full">
+        <header class="lg:hidden bg-white p-4 border-b border-slate-100 flex justify-between items-center sticky top-0 z-[100] shadow-sm">
+            <div class="flex items-center gap-2">
+                <span class="font-black text-base brand-text uppercase text-blue-600">CE ADMIN</span>
+            </div>
+            <button onclick="toggleSidebar()" class="text-slate-600 p-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+        </header>
+
+        <div class="p-4 md:p-8 flex-1">
+
+            <section id="section-overview" class="section-content active space-y-6 md:space-y-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-900">Platform Overview</h2>
+                        <p id="overview-scope-label" class="text-xs text-slate-400 font-medium mt-0.5">All Events · Real-time</p>
+                    </div>
+                    <button onclick="exportAttendance(this)" id="export-btn" class="w-full sm:w-auto bg-white text-slate-600 px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition border shadow-sm flex items-center justify-center gap-2">
+                        ↓ Export CSV
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
+                    <div class="stat-card">
+                        <p class="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">Total Attendance</p>
+                        <h3 id="stat-attendance" class="text-3xl md:text-4xl font-black mt-2">0</h3>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">Live Viewers Now</p>
+                        <h3 id="stat-viewers" class="text-3xl md:text-4xl font-black mt-2 text-blue-600 brand-text">0</h3>
+                    </div>
+                    <div class="stat-card sm:col-span-2 md:col-span-1">
+                        <p class="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">Platform Messages</p>
+                        <h3 id="stat-messages" class="text-3xl md:text-4xl font-black mt-2">0</h3>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-2xl border border-slate-100 p-4 md:p-6 shadow-sm">
+                        <div class="flex justify-between items-center mb-5">
+                            <h4 class="font-bold text-sm text-slate-700">Recent Registrations</h4>
+                            <span class="text-[10px] bg-green-100 text-green-600 px-2.5 py-1 rounded-full font-bold animate-pulse uppercase">Live Feed</span>
+                        </div>
+                        <div id="activity-log" class="space-y-3 max-h-96 overflow-y-auto pr-1">
+                            <p class="text-slate-400 italic text-sm">Monitoring registrations...</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-100 p-4 md:p-6 shadow-sm">
+                        <h4 class="font-bold text-sm text-slate-700 mb-5 flex items-center gap-2">
+                            Who's Watching Now
+                            <span id="online-count" class="bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">0</span>
+                        </h4>
+                        <div id="presence-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+                            <p class="text-slate-400 text-sm italic col-span-full">Waiting for viewers...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-homepage" class="section-content space-y-6 md:space-y-8">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-black text-slate-900">Homepage Content</h2>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                    <div class="bg-white p-6 md:p-8 rounded-2xl border shadow-sm space-y-5 self-start">
+                        <h3 class="font-bold text-slate-800 border-b pb-4 text-sm uppercase tracking-wider">Top Marquee Announcements</h3>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-wide">Enter one announcement per line.</p>
+                        <textarea id="edit-marquee" rows="10" class="w-full p-4 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-blue-600 brand-focus text-sm leading-relaxed font-medium"></textarea>
+                        <button onclick="saveHomepageMarquee(this)" class="w-full bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-700 transition brand-bg brand-shadow">Save Announcements</button>
+                    </div>
+                    <div class="bg-white p-6 md:p-8 rounded-2xl border shadow-sm space-y-5">
+                        <h3 class="font-bold text-slate-800 border-b pb-4 text-sm uppercase tracking-wider">Weekly Service Schedule</h3>
+                        <div id="schedule-inputs" class="space-y-5 max-h-[500px] overflow-y-auto pr-1"></div>
+                        <button onclick="saveHomepageSchedule(this)" class="w-full bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-700 transition brand-bg brand-shadow">Save Schedule</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-pages" class="section-content space-y-6 md:space-y-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-900">Event Management</h2>
+                        <p id="events-scope-label" class="text-xs text-slate-400 font-medium mt-0.5">All events</p>
+                    </div>
+                    <button onclick="openNewEventModal()" class="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-700 transition brand-bg brand-shadow">
+                        + Create New Event
+                    </button>
+                </div>
+                <div class="bg-white rounded-2xl border overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left min-w-[600px]">
+                            <thead class="bg-slate-50 border-b border-slate-100">
+                                <tr>
+                                    <th class="p-4 text-[11px] font-bold uppercase text-slate-400 tracking-wider">Event Name</th>
+                                    <th class="p-4 text-[11px] font-bold uppercase text-slate-400 tracking-wider">Twitch Channel</th>
+                                    <th class="p-4 text-[11px] font-bold uppercase text-slate-400 tracking-wider">Owner</th>
+                                    <th class="p-4 text-[11px] font-bold uppercase text-slate-400 tracking-wider text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="event-list-table">
+                                <tr><td colspan="4" class="p-8 text-center text-slate-400 text-sm italic">Loading events...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-streaming" class="section-content space-y-6 md:space-y-8">
+                <div id="no-event-placeholder" class="bg-amber-50 p-10 md:p-16 rounded-[2rem] text-center border-2 border-dashed border-amber-200">
+                    <div class="text-4xl mb-4">📺</div>
+                    <h3 class="font-black text-amber-800 text-lg">No Event Selected</h3>
+                    <p class="text-amber-700 text-sm mt-2">Go to 'Events' and click 'Open Controls' to begin managing a live event.</p>
+                </div>
+
+                <div id="control-grid" class="hidden">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-900">Live Control</h2>
+                            <p id="control-event-label" class="text-xs font-mono text-slate-400 mt-0.5">— event not loaded —</p>
+                        </div>
+                        <div id="viewer-live-badge" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            <span id="stream-viewer-count">0 watching</span>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <div id="event-controls-column" class="lg:col-span-4 space-y-5">
+                            <div class="bg-white p-5 md:p-6 rounded-2xl border shadow-sm">
+                                <h3 class="font-bold text-slate-800 text-sm mb-4">⚡ Event Settings</h3>
+                                <div class="space-y-3">
+                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase">Stream Title</label><input type="text" id="edit-title" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm brand-focus font-medium"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase">Description</label><textarea id="edit-desc" rows="2" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm brand-focus"></textarea></div>
+                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase">Twitch ID</label><input type="text" id="edit-twitch" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm mono brand-focus"></div>
+                                    <button onclick="updateEventSettings(this)" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-700 brand-bg brand-shadow">Apply Live Settings</button>
+                                </div>
+                            </div>
+
+                            <div class="bg-amber-50 p-5 rounded-2xl border border-amber-200">
+                                <h4 class="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-2">📌 Pinned Message</h4>
+                                <div id="pinned-display" class="text-sm text-amber-900 font-medium mb-3 italic">No message pinned</div>
+                                <button onclick="runWithLoader(this, 'Clearing...', unpinMessage)" class="text-[10px] font-bold text-amber-700 uppercase hover:underline">Clear Pin</button>
+                            </div>
+
+                            <div class="bg-white p-5 rounded-2xl border shadow-sm">
+                                <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-3">📢 Push Announcement</h4>
+                                <div class="flex gap-2">
+                                    <input type="text" id="new-ann" placeholder="Text..." class="flex-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm brand-focus">
+                                    <button onclick="addAnnouncement(this)" class="bg-slate-900 text-white px-5 rounded-xl font-bold text-lg hover:bg-slate-700">+</button>
+                                </div>
+                                <div id="admin-ann-list" class="mt-3 space-y-2"></div>
+                            </div>
+                        </div>
+
+                        <div id="chat-column" class="lg:col-span-8 bg-white rounded-2xl border shadow-lg flex flex-col overflow-hidden h-[500px] lg:h-[700px]">
+                            <div class="p-4 border-b bg-gradient-to-r from-violet-600 to-blue-600 flex justify-between items-center">
+                                <span class="font-bold text-xs uppercase tracking-widest text-white/90">Live Event Chat</span>
+                                <span id="mod-mode-badge" class="hidden text-[9px] bg-white/20 text-white px-2 py-1 rounded-full font-bold uppercase">Moderation Mode</span>
+                            </div>
+                            <div id="admin-chat-box" class="flex-1 overflow-y-auto p-4 md:p-5 space-y-3 bg-slate-50/30"></div>
+                            <div class="p-4 border-t bg-white">
+                                <div id="admin-chat-input-area" class="flex flex-col sm:flex-row gap-2 bg-slate-100 p-2 rounded-xl">
+                                    <input type="text" id="adminChatInput" placeholder="Reply as Admin..." class="flex-1 bg-transparent px-3 py-2 outline-none text-sm font-medium">
+                                    <button onclick="sendAdminMessage(this)" class="w-full sm:w-auto bg-blue-600 text-white px-5 py-2.5 rounded-lg font-bold text-xs shadow-md brand-bg brand-shadow">Send</button>
+                                </div>
+                                <p id="mod-read-only-note" class="hidden text-[10px] text-slate-400 text-center mt-2 font-medium">Read-only mode. Use delete to remove messages.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-account" class="section-content space-y-6 md:space-y-8">
+                <h2 class="text-2xl font-black text-slate-900">Admin Management</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+                    <div class="lg:col-span-2 bg-white rounded-2xl border overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left min-w-[500px]">
+                                <thead class="bg-slate-50 border-b">
+                                    <tr>
+                                        <th class="p-4 text-[11px] font-bold uppercase text-slate-400">Username</th>
+                                        <th class="p-4 text-[11px] font-bold uppercase text-slate-400">Role</th>
+                                        <th class="p-4 text-[11px] font-bold uppercase text-slate-400">Assigned</th>
+                                        <th class="p-4 text-[11px] font-bold uppercase text-slate-400 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 md:p-6 rounded-2xl border shadow-sm self-start">
+                        <h4 class="font-bold text-sm text-slate-800 mb-5">Assign New Admin</h4>
+                        <div class="space-y-3">
+                            <div><label class="text-[10px] font-bold text-slate-400 uppercase">Username</label><input type="text" id="new-admin-user" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm brand-focus font-medium"></div>
+                            <div><label class="text-[10px] font-bold text-slate-400 uppercase">Password</label><input type="password" id="new-admin-pass" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm brand-focus"></div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase">Role</label>
+                                <select id="new-admin-role" onchange="toggleAssignedEventField()" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm brand-focus font-medium">
+                                    <option value="Super Admin">Super Admin</option>
+                                    <option value="Stream Manager">Stream Manager</option>
+                                    <option value="Chat Moderator">Chat Moderator</option>
+                                </select>
+                            </div>
+                            <div id="assign-event-field" class="hidden">
+                                <label class="text-[10px] font-bold text-violet-500 uppercase">Assign Event</label>
+                                <select id="new-admin-event" class="w-full mt-1 p-3 bg-violet-50 border border-violet-200 rounded-xl outline-none text-sm font-medium"><option value="">— Select —</option></select>
+                            </div>
+                            <button onclick="addAdmin(this)" class="bg-blue-600 text-white w-full py-3.5 rounded-xl font-bold text-sm shadow-lg brand-bg brand-shadow mt-2">Create Account</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-5 md:p-6 rounded-2xl border shadow-sm">
+                    <h4 class="font-bold text-sm text-slate-800 mb-4">🛡️ Reassign Chat Moderator</h4>
+                    <div class="flex flex-col sm:flex-row gap-4 items-end">
+                        <div class="w-full sm:flex-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Moderator</label><select id="reassign-mod-select" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm"><option value="">— Select —</option></select></div>
+                        <div class="w-full sm:flex-1"><label class="text-[10px] font-bold text-slate-400 uppercase">New Event</label><select id="reassign-event-select" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm"><option value="">— Select —</option></select></div>
+                        <button onclick="reassignModerator(this)" class="w-full sm:w-auto bg-violet-600 text-white px-8 py-3 rounded-xl font-bold text-sm hover:bg-violet-700 shadow-md">Reassign</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-settings" class="section-content space-y-6 md:space-y-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h2 class="text-2xl font-black text-slate-900">Global Settings</h2>
+                    <button onclick="saveGlobalSettings(this)" class="w-full sm:w-auto bg-slate-900 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg">Save Settings</button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                    <div class="bg-white p-6 md:p-8 rounded-2xl border shadow-sm space-y-5">
+                        <h3 class="font-bold text-slate-800 border-b pb-4 text-sm uppercase">Brand & Interface</h3>
+                        <div><label class="text-[10px] font-bold text-slate-400 uppercase">Platform Name</label><input type="text" id="set-site-name" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm font-medium"></div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Theme Color</label>
+                            <div class="flex gap-4 mt-1 items-center"><input type="color" id="set-theme-color" class="w-14 h-14 rounded-xl cursor-pointer border-0 bg-transparent p-0"><input type="text" id="set-theme-hex" class="flex-1 p-3 bg-slate-50 border rounded-xl outline-none mono text-sm"></div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Platform Logo</label>
+                            <div class="mt-1 flex items-center gap-4">
+                                <div class="w-16 h-16 bg-slate-50 border rounded-xl flex items-center justify-center overflow-hidden shrink-0"><img id="logo-preview" src="logo.png" class="max-w-full max-h-full object-contain" onerror="this.style.display='none'"></div>
+                                <div class="flex-1"><input type="file" id="set-logo-file" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-bold file:bg-blue-50 file:text-blue-600"><p class="text-[10px] text-slate-400 mt-1.5">Max size 500KB.</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 md:p-8 rounded-2xl border shadow-sm space-y-5">
+                        <h3 class="font-bold text-slate-800 border-b pb-4 text-sm uppercase">Security</h3>
+                        <div><label class="text-[10px] font-bold text-slate-400 uppercase">Default Twitch ID</label><input type="text" id="set-twitch-id" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm mono font-medium"></div>
+                        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border">
+                            <div><p class="font-bold text-sm text-slate-800">Global Chat</p><p class="text-[10px] text-slate-500 uppercase mt-0.5">Allow user messages</p></div><input type="checkbox" id="set-chat-enabled" class="w-5 h-5 accent-blue-600">
+                        </div>
+                        <div class="flex items-center justify-between p-4 bg-amber-50 rounded-xl border border-amber-200">
+                            <div><p class="font-bold text-sm text-amber-800">Maintenance Mode</p><p class="text-[10px] text-amber-600 uppercase mt-0.5">Locks down front-end</p></div><input type="checkbox" id="set-maintenance" class="w-5 h-5 accent-amber-600">
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div id="event-modal" class="fixed inset-0 bg-slate-900/60 z-[300] hidden items-center justify-center p-4 backdrop-blur-sm" style="display:none">
+        <div class="bg-white rounded-[2rem] p-6 md:p-8 max-w-md w-full shadow-2xl">
+            <h3 class="text-lg font-black mb-6">Create Live Event</h3>
+            <div class="space-y-4">
+                <div><label class="text-[10px] font-bold text-slate-400 uppercase">Event Title</label><input type="text" id="ev-title" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm brand-focus font-medium"></div>
+                <div><label class="text-[10px] font-bold text-slate-400 uppercase">URL Slug</label><input type="text" id="ev-slug" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm mono brand-focus"></div>
+                <div><label class="text-[10px] font-bold text-slate-400 uppercase">Twitch ID</label><input type="text" id="ev-twitch" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl outline-none text-sm mono brand-focus"></div>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="closeEventModal()" class="flex-1 py-3 font-bold text-slate-400 hover:bg-slate-50 rounded-xl text-sm">Cancel</button>
+                    <button onclick="saveEvent(this)" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg brand-bg brand-shadow">Create Event</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-modal" class="hidden fixed inset-0 z-[500] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 md:p-8 shadow-2xl text-center">
+            <div id="modal-icon" class="w-12 h-12 md:w-14 md:h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold brand-bg brand-text-light">!</div>
+            <h3 class="text-lg font-black text-slate-900" id="modal-title">Notice</h3>
+            <p class="text-slate-500 mt-2 text-sm leading-relaxed" id="modal-message">...</p>
+            <div class="grid grid-cols-2 gap-3 mt-6 md:mt-7" id="modal-buttons-confirm">
+                <button onclick="closeModal()" class="py-3 md:py-3.5 rounded-xl font-bold text-slate-400 hover:bg-slate-50 text-sm">Cancel</button>
+                <button id="modal-confirm-btn" class="py-3 md:py-3.5 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg brand-bg brand-shadow">Yes, Proceed</button>
+            </div>
+            <div class="mt-6 md:mt-7 hidden" id="modal-buttons-alert">
+                <button onclick="closeModal()" class="w-full py-3 md:py-3.5 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg brand-bg brand-shadow">Acknowledge</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar(forceClose = false) {
+            const sidebar = document.getElementById('admin-sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            if (forceClose || !sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            } else {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            }
+        }
+    </script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, enableIndexedDbPersistence, collection, addDoc, onSnapshot, query, where, getDocs, orderBy, limit, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDF0cyaNUD1RAsZQ6QnzDEuoGM4gDpDgA8",
+            authDomain: "cem8-1c967.firebaseapp.com",
+            projectId: "cem8-1c967",
+            storageBucket: "cem8-1c967.firebasestorage.app",
+            messagingSenderId: "994146989348",
+            appId: "1:994146989348:web:e40eb79d7d3dc80cc06fb1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        enableIndexedDbPersistence(db).catch(console.warn);
+
+        // Global State & Core Logic identical to original script
+        window.currentEventId = null;
+        window.adminRole = null;
+        window.adminUsername = null;
+        window.adminAssignedEvent = null;
+        let chatUnsub = null, annUnsub = null, eventUnsub = null;
+        let allEventsCache = [];
+        let allAdminsCache = [];
+        let pendingLogoData = null;
+
+        window.runWithLoader = async (btn, loadingText, task) => {
+            if (!btn) { await task(); return; }
+            const originalText = btn.innerHTML;
+            btn.innerHTML = loadingText;
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            btn.style.cursor = 'wait';
+            try { await task(); } 
+            catch (e) { console.error(e); showAlert("Error", "Action failed.", "❌"); } 
+            finally { btn.innerHTML = originalText; btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+        };
+
+        window.closeModal = () => document.getElementById('custom-modal').classList.add('hidden');
+        
+        window.showAlert = (title, message, icon = '!') => {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('modal-icon').innerText = icon;
+            document.getElementById('modal-buttons-confirm').classList.add('hidden');
+            document.getElementById('modal-buttons-alert').classList.remove('hidden');
+            document.getElementById('custom-modal').classList.remove('hidden');
+        };
+
+        window.showConfirm = (title, message, onConfirmCallback, icon = '?') => {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('modal-icon').innerText = icon;
+            document.getElementById('modal-buttons-confirm').classList.remove('hidden');
+            document.getElementById('modal-buttons-alert').classList.add('hidden');
+            document.getElementById('custom-modal').classList.remove('hidden');
+            
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.innerHTML = "Yes, Proceed";
+            confirmBtn.disabled = false;
+            
+            confirmBtn.onclick = async () => {
+                confirmBtn.innerHTML = "Processing...";
+                confirmBtn.disabled = true;
+                if (onConfirmCallback) await onConfirmCallback();
+                closeModal();
+            };
+        };
+
+        window.showSection = (sectionId) => {
+            const role = window.adminRole;
+            const restricted = {
+                'homepage': ['Stream Manager', 'Chat Moderator'],
+                'overview': ['Chat Moderator'],
+                'pages': ['Chat Moderator'],
+                'account': ['Stream Manager', 'Chat Moderator'],
+                'settings': ['Stream Manager', 'Chat Moderator']
+            };
+            if (restricted[sectionId] && restricted[sectionId].includes(role)) {
+                return showAlert("Restricted", `Your role (${role}) cannot access this.`, '🔒');
+            }
+            document.querySelectorAll('.section-content').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active-link'));
+            document.getElementById('section-' + sectionId).classList.add('active');
+            document.getElementById('nav-' + sectionId).classList.add('active-link');
+        };
+
+        window.checkAccess = async (btn) => {
+            await runWithLoader(btn, 'Authenticating...', async () => {
+                const user = document.getElementById('admin-user').value.trim();
+                const pass = document.getElementById('admin-key').value.trim();
+                const errEl = document.getElementById('login-error');
+                errEl.classList.add('hidden');
+
+                if (!user || !pass) { errEl.innerText = 'Please enter both fields.'; errEl.classList.remove('hidden'); return; }
+                if (user === "admin" && pass === "CEB1-2026") return loginSuccess("Master Admin", "Super Admin", null);
+
+                try {
+                    const snap = await getDocs(query(collection(db, "admins"), where("username", "==", user)));
+                    if (!snap.empty && snap.docs[0].data().password === pass) {
+                        const data = snap.docs[0].data();
+                        loginSuccess(user, data.role, data.assignedEvent || null);
+                    } else {
+                        errEl.innerText = 'Incorrect credentials.';
+                        errEl.classList.remove('hidden');
+                    }
+                } catch(e) { errEl.innerText = 'Connection error.'; errEl.classList.remove('hidden'); }
+            });
+        };
+
+        function loginSuccess(username, role, assignedEvent) {
+            window.adminUsername = username; window.adminRole = role; window.adminAssignedEvent = assignedEvent;
+            localStorage.setItem('admin_auth_user', username); localStorage.setItem('admin_auth_role', role); localStorage.setItem('admin_auth_event', assignedEvent || '');
+
+            document.getElementById('admin-lock').classList.add('hidden');
+            document.getElementById('current-admin-name').innerText = username;
+            
+            const badge = document.getElementById('current-role-badge');
+            const badgeClasses = { 'Super Admin': 'role-super', 'Stream Manager': 'role-stream', 'Chat Moderator': 'role-mod' };
+            badge.className = `role-badge ${badgeClasses[role] || 'role-default'}`; badge.innerText = role;
+
+            applyRoleRestrictions(role, assignedEvent);
+        }
+
+        const savedUser = localStorage.getItem('admin_auth_user');
+        const savedRole = localStorage.getItem('admin_auth_role');
+        if (savedUser && savedRole) loginSuccess(savedUser, savedRole, localStorage.getItem('admin_auth_event'));
+
+        window.logoutAdmin = async () => { localStorage.clear(); location.reload(); };
+
+        function applyRoleRestrictions(role, assignedEvent) {
+            const isSA = role === 'Super Admin', isSM = role === 'Stream Manager', isCM = role === 'Chat Moderator';
+            const navRules = { 'nav-homepage': isSA, 'nav-account': isSA, 'nav-settings': isSA, 'nav-overview': !isCM, 'nav-pages': !isCM };
+            Object.entries(navRules).forEach(([id, visible]) => document.getElementById(id).classList.toggle('hidden-by-role', !visible));
+
+            if (isSM) {
+                document.getElementById('overview-scope-label').innerText = 'Your Events';
+                document.getElementById('events-scope-label').innerText = 'Your events only';
+                document.getElementById('export-btn').classList.add('hidden');
+            }
+
+            if (isCM) {
+                document.getElementById('event-controls-column').style.display = 'none';
+                document.getElementById('chat-column').className = 'col-span-12 bg-white rounded-2xl border shadow-lg flex flex-col overflow-hidden h-[600px]';
+                document.getElementById('mod-mode-badge').classList.remove('hidden');
+                document.getElementById('admin-chat-input-area').classList.add('hidden');
+                document.getElementById('mod-read-only-note').classList.remove('hidden');
+
+                showSection('streaming');
+
+                if (assignedEvent) {
+                    document.getElementById('no-event-placeholder').classList.add('hidden');
+                    document.getElementById('control-grid').classList.remove('hidden');
+                    document.getElementById('target-event').innerText = `Mod: ${assignedEvent}`;
+                    window.currentEventId = assignedEvent;
+                    setupChatListener(assignedEvent, true); setupEventListener(assignedEvent);
+                } else {
+                    document.getElementById('no-event-placeholder').innerHTML = `<h3 class="font-black text-amber-800 text-lg">No Event Assigned</h3>`;
+                }
+            }
+        }
+
+        const daysConfig = [{id:'mon',label:'Mon'},{id:'tue',label:'Tue'},{id:'wed',label:'Wed'},{id:'thu',label:'Thu'},{id:'fri',label:'Fri'},{id:'sat',label:'Sat'},{id:'sun',label:'Sun'}];
+        const schContainer = document.getElementById('schedule-inputs');
+        daysConfig.forEach(day => {
+            schContainer.innerHTML += `
+                <div class="border-b pb-4 last:border-0"><h4 class="font-bold text-sm text-blue-600 mb-2">${day.label}</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1"><input id="sch-${day.id}-title1" class="w-full p-2.5 bg-slate-50 border rounded-lg text-xs" placeholder="Service 1"><input id="sch-${day.id}-time1" class="w-full p-2.5 bg-slate-50 border rounded-lg text-xs" placeholder="Time"></div>
+                    <div class="space-y-1"><input id="sch-${day.id}-title2" class="w-full p-2.5 bg-slate-50 border rounded-lg text-xs" placeholder="Service 2"><input id="sch-${day.id}-time2" class="w-full p-2.5 bg-slate-50 border rounded-lg text-xs" placeholder="Time"></div>
+                </div></div>`;
+        });
+
+        window.saveHomepageMarquee = async (btn) => {
+            await runWithLoader(btn, 'Saving...', async () => {
+                const marqueeArr = document.getElementById('edit-marquee').value.split('\n').filter(s => s.trim());
+                await setDoc(doc(db, "settings", "homepage"), { marquee: marqueeArr, updatedAt: serverTimestamp() }, { merge: true });
+                showAlert("Saved", "Announcements updated.", "✅");
+            });
+        };
+
+        window.saveHomepageSchedule = async (btn) => {
+            await runWithLoader(btn, 'Saving...', async () => {
+                const schedule = {};
+                daysConfig.forEach(d => { schedule[d.id] = { title1: document.getElementById(`sch-${d.id}-title1`).value, time1: document.getElementById(`sch-${d.id}-time1`).value, title2: document.getElementById(`sch-${d.id}-title2`).value, time2: document.getElementById(`sch-${d.id}-time2`).value }; });
+                await setDoc(doc(db, "settings", "homepage"), { schedule, updatedAt: serverTimestamp() }, { merge: true });
+                showAlert("Saved", "Schedule updated.", "✅");
+            });
+        };
+
+        onSnapshot(doc(db, "settings", "homepage"), (d) => {
+            if (d.exists()) {
+                const data = d.data();
+                if (data.marquee) document.getElementById('edit-marquee').value = data.marquee.join('\n');
+                if (data.schedule) daysConfig.forEach(day => { if(data.schedule[day.id]) ['title1','time1','title2','time2'].forEach(f => { const el = document.getElementById(`sch-${day.id}-${f}`); if(el) el.value = data.schedule[day.id][f] || ''; }); });
+            }
+        });
+
+        document.getElementById('set-logo-file').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            if (file.size > 500 * 500) { showAlert("File too large", "Logo must be under 500KB.", "⚠️"); this.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = (event) => { pendingLogoData = event.target.result; const preview = document.getElementById('logo-preview'); preview.src = pendingLogoData; preview.style.display = 'block'; };
+            reader.readAsDataURL(file);
+        });
+
+        const tcPicker = document.getElementById('set-theme-color'), thInput = document.getElementById('set-theme-hex');
+        tcPicker.addEventListener('input', (e) => { thInput.value = e.target.value; applyTheme(e.target.value); });
+        thInput.addEventListener('input', (e) => { tcPicker.value = e.target.value; applyTheme(e.target.value); });
+
+        onSnapshot(doc(db, "settings", "global"), (d) => {
+            if (d.exists()) {
+                const s = d.data();
+                document.getElementById('set-site-name').value = s.siteName || "";
+                if(s.logoUrl) document.querySelectorAll('#logo-preview, #sidebar-icon, #lock-brand-icon').forEach(el => el.innerHTML ? el.innerHTML = `<img src="${s.logoUrl}" class="w-full h-full object-contain">` : el.src = s.logoUrl);
+                document.getElementById('set-twitch-id').value = s.defaultTwitch || "ggraphixc";
+                document.getElementById('set-chat-enabled').checked = s.chatEnabled !== false;
+                document.getElementById('set-maintenance').checked = s.maintenanceMode === true;
+                if(s.themeColor) { tcPicker.value = s.themeColor; thInput.value = s.themeColor; applyTheme(s.themeColor); }
+            }
+        });
+
+        window.saveGlobalSettings = async (btn) => {
+            await runWithLoader(btn, 'Saving...', async () => {
+                const data = { siteName: document.getElementById('set-site-name').value, themeColor: thInput.value, defaultTwitch: document.getElementById('set-twitch-id').value, chatEnabled: document.getElementById('set-chat-enabled').checked, maintenanceMode: document.getElementById('set-maintenance').checked, lastUpdated: serverTimestamp() };
+                if (pendingLogoData) data.logoUrl = pendingLogoData;
+                await setDoc(doc(db, "settings", "global"), data, { merge: true });
+                showAlert("Deployed", "Settings updated.", "✅"); pendingLogoData = null;
+            });
+        };
+
+        function applyTheme(hex) {
+            let s = document.getElementById('theme-styles');
+            if (!s) { s = document.createElement('style'); s.id = 'theme-styles'; document.head.appendChild(s); }
+            s.innerHTML = `.active-link{background:${hex}18!important;color:${hex}!important;border-right-color:${hex}!important}.brand-bg{background-color:${hex}!important}.brand-text{color:${hex}!important}.brand-shadow{box-shadow:0 8px 20px -4px ${hex}50!important}.brand-focus:focus{border-color:${hex}!important;box-shadow:0 0 0 3px ${hex}30!important}`;
+        }
+
+        window.toggleAssignedEventField = () => document.getElementById('assign-event-field').classList.toggle('hidden', document.getElementById('new-admin-role').value !== 'Chat Moderator');
+
+        onSnapshot(collection(db, "admins"), (snap) => {
+            allAdminsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const list = document.getElementById('admin-list');
+            list.innerHTML = `<tr class="bg-blue-50/40 border-b"><td class="p-4 font-bold text-sm text-blue-800">Master Admin</td><td class="p-4"><span class="role-badge role-super">Super Admin</span></td><td class="p-4 text-xs">All Events</td><td class="p-4 text-right">Root</td></tr>`;
+            allAdminsCache.forEach(a => {
+                list.innerHTML += `<tr class="border-b hover:bg-slate-50"><td class="p-4 font-bold text-sm">${a.username}</td><td class="p-4"><span class="role-badge ${a.role==='Stream Manager'?'role-stream':'role-mod'}">${a.role}</span></td><td class="p-4 text-xs">${a.assignedEvent || '—'}</td><td class="p-4 text-right">${window.adminRole === 'Super Admin' ? `<button onclick="deleteAdmin('${a.id}')" class="text-[10px] text-red-500 font-bold uppercase">Revoke</button>` : '—'}</td></tr>`;
+            });
+            const ms = document.getElementById('reassign-mod-select'); ms.innerHTML = '<option value="">— Select —</option>';
+            allAdminsCache.filter(a => a.role === 'Chat Moderator').forEach(a => ms.innerHTML += `<option value="${a.id}">${a.username}</option>`);
+        });
+
+        window.addAdmin = async (btn) => {
+            if (window.adminRole !== 'Super Admin') return;
+            await runWithLoader(btn, 'Creating...', async () => {
+                const u = document.getElementById('new-admin-user').value.trim(), p = document.getElementById('new-admin-pass').value.trim(), r = document.getElementById('new-admin-role').value, ev = document.getElementById('new-admin-event').value;
+                if (!u || !p) return showAlert("Error", "Username and password required.", "⚠️");
+                await addDoc(collection(db, "admins"), { username: u, password: p, role: r, assignedEvent: r==='Chat Moderator'?ev:null });
+                showAlert("Created", "Admin added.", "✅");
+            });
+        };
+
+        window.deleteAdmin = (id) => { showConfirm("Revoke Access", "Are you sure?", async () => await deleteDoc(doc(db, "admins", id))); };
+        window.reassignModerator = async (btn) => {
+            if (window.adminRole !== 'Super Admin') return;
+            await runWithLoader(btn, '...', async () => {
+                const m = document.getElementById('reassign-mod-select').value, e = document.getElementById('reassign-event-select').value;
+                if(m && e) { await updateDoc(doc(db, "admins", m), { assignedEvent: e }); showAlert("Reassigned", "Done.", "✅"); }
+            });
+        };
+
+        onSnapshot(collection(db, "events"), (snap) => {
+            allEventsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            ['new-admin-event', 'reassign-event-select'].forEach(id => {
+                const sel = document.getElementById(id); sel.innerHTML = '<option value="">— Select —</option>';
+                allEventsCache.forEach(ev => sel.innerHTML += `<option value="${ev.id}">${ev.title}</option>`);
+            });
+            const table = document.getElementById('event-list-table'); table.innerHTML = '';
+            const vis = window.adminRole === 'Stream Manager' ? allEventsCache.filter(e => e.createdBy === window.adminUsername) : allEventsCache;
+            vis.forEach(ev => {
+                table.innerHTML += `<tr class="border-b hover:bg-slate-50"><td class="p-4"><p class="font-bold text-sm">${ev.title}</p><code class="text-[10px] text-blue-500">${ev.id}</code></td><td class="p-4 text-xs">${ev.twitch}</td><td class="p-4 text-[10px]">${ev.createdBy||'System'}</td><td class="p-4 text-right"><button onclick="manageEvent('${ev.id}')" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[10px]">Controls</button> <button onclick="deleteEvent('${ev.id}')" class="text-red-500 text-[10px] ml-1">Del</button></td></tr>`;
+            });
+        });
+
+        window.openNewEventModal = () => document.getElementById('event-modal').style.display = 'flex';
+        window.closeEventModal = () => document.getElementById('event-modal').style.display = 'none';
+        window.saveEvent = async (btn) => {
+            await runWithLoader(btn, '...', async () => {
+                const t = document.getElementById('ev-title').value, s = document.getElementById('ev-slug').value.toLowerCase().replace(/\s+/g,'-'), tw = document.getElementById('ev-twitch').value;
+                if(!t || !s) return;
+                await setDoc(doc(db, "events", s), { title: t, twitch: tw, createdBy: window.adminUsername, createdAt: serverTimestamp() });
+                closeEventModal();
+            });
+        };
+        window.deleteEvent = (id) => showConfirm("Delete", "Delete event?", async () => await deleteDoc(doc(db, "events", id)));
+
+        window.manageEvent = (id) => {
+            window.currentEventId = id; document.getElementById('no-event-placeholder').classList.add('hidden'); document.getElementById('control-grid').classList.remove('hidden'); showSection('streaming');
+            if (chatUnsub) chatUnsub(); if (annUnsub) annUnsub(); if (eventUnsub) eventUnsub();
+            setupEventListener(id); setupChatListener(id, window.adminRole === 'Chat Moderator');
+            annUnsub = onSnapshot(collection(db, `events/${id}/announcements`), (snap) => {
+                const l = document.getElementById('admin-ann-list'); l.innerHTML = '';
+                snap.forEach(d => l.innerHTML += `<div class="flex justify-between bg-slate-50 p-2 text-xs border rounded mb-1">${d.data().text} <button onclick="deleteAnn('${d.id}')" class="text-red-400">×</button></div>`);
+            });
+        };
+
+        function setupEventListener(id) {
+            eventUnsub = onSnapshot(doc(db, "events", id), (d) => {
+                if (!d.exists()) return; const data = d.data();
+                if(document.getElementById('edit-title')) document.getElementById('edit-title').value = data.title || "";
+                if(document.getElementById('edit-desc')) document.getElementById('edit-desc').value = data.description || "";
+                if(document.getElementById('edit-twitch')) document.getElementById('edit-twitch').value = data.twitch || "";
+                document.getElementById('pinned-display').innerText = data.pinnedMessage ? data.pinnedMessage.text : "No pin";
+            });
+        }
+
+        function setupChatListener(id, isMod = false) {
+            chatUnsub = onSnapshot(query(collection(db, `events/${id}/messages`), orderBy("time", "desc"), limit(60)), (snap) => {
+                const box = document.getElementById('admin-chat-box'); box.innerHTML = '';
+                snap.docs.reverse().forEach(d => {
+                    const m = d.data(), isA = m.role === 'admin';
+                    box.innerHTML += `<div class="p-3 rounded-xl border ${isA?'bg-blue-50':'bg-white'} mb-2"><div class="flex justify-between"><span class="text-[10px] font-bold">${m.user}</span> <div>${!isA?`<button onclick="pinMessage('${m.text}', '${m.user}')" class="text-[9px] text-amber-500 mr-2">Pin</button>`:''}<button onclick="deleteMsg('${d.id}')" class="text-[9px] text-red-400">Del</button></div></div><p class="text-sm">${m.text}</p></div>`;
+                });
+                box.scrollTop = box.scrollHeight;
+            });
+        }
+
+        window.updateEventSettings = async (btn) => { await runWithLoader(btn, '...', async () => await updateDoc(doc(db, "events", window.currentEventId), { title: document.getElementById('edit-title').value, description: document.getElementById('edit-desc').value, twitch: document.getElementById('edit-twitch').value })); };
+        window.sendAdminMessage = async () => { const i = document.getElementById('adminChatInput'); if(!i.value.trim()) return; await addDoc(collection(db, `events/${window.currentEventId}/messages`), { user: window.adminUsername, text: i.value, role: 'admin', time: serverTimestamp() }); i.value = ''; };
+        window.addAnnouncement = async () => { const i = document.getElementById('new-ann'); if(!i.value) return; await addDoc(collection(db, `events/${window.currentEventId}/announcements`), { text: i.value }); i.value=''; };
+        window.pinMessage = async (t, u) => await updateDoc(doc(db, "events", window.currentEventId), { pinnedMessage: { text: t, user: u } });
+        window.unpinMessage = async () => await updateDoc(doc(db, "events", window.currentEventId), { pinnedMessage: null });
+        window.deleteMsg = async (id) => await deleteDoc(doc(db, `events/${window.currentEventId}/messages`, id));
+        window.deleteAnn = async (id) => await deleteDoc(doc(db, `events/${window.currentEventId}/announcements`, id));
+
+        onSnapshot(collection(db, "attendance"), (snap) => {
+            let total = 0; const log = document.getElementById('activity-log'); log.innerHTML = ''; window.currentAttendanceList = [];
+            snap.forEach(d => { total += parseInt(d.data().count||1); window.currentAttendanceList.push(d.data()); });
+            document.getElementById('stat-attendance').innerText = total;
+            window.currentAttendanceList.slice(-8).reverse().forEach(data => log.innerHTML += `<div class="text-sm border-b pb-2 mb-2"><b>${data.fullName}</b> joined ${data.group}</div>`);
+        });
+
+        window.exportAttendance = () => {
+            let csv = "data:text/csv;charset=utf-8,Full Name,Group,Phone,Nationality,Count,Event ID\n";
+            window.currentAttendanceList.forEach(r => csv += `"${r.fullName}","${r.group}","${r.phone}","${r.nationality}","${r.count}","${r.eventId}"\n`);
+            const l = document.createElement("a"); l.href = encodeURI(csv); l.download = "Attendance.csv"; l.click();
+        };
+
+        onSnapshot(collection(db, "presence"), (snap) => {
+            let oc = 0; const list = document.getElementById('presence-list'); list.innerHTML=''; const now = Date.now();
+            snap.forEach(d => { const p = d.data(); if(p.lastSeen && (now - p.lastSeen.toDate().getTime())/60000 < 2) { oc++; list.innerHTML += `<div class="bg-white p-2 rounded border text-xs font-bold">${p.user}</div>`; } });
+            document.getElementById('online-count').innerText = oc; document.getElementById('stat-viewers').innerText = oc; document.getElementById('stream-viewer-count').innerText = `${oc} watching`;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream | Christ Embassy Benin Zone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/picmo@5.8.5/dist/umd/index.js"></script>
+    <script src="https://player.twitch.tv/js/embed/v1.js"></script>
+    
+    <style>
+        body { background-color: #f0f2f5; }
+        .chat-height { height: 450px; }
+        @media (min-width: 1024px) { .chat-height { height: 600px; } }
+        #chat-box::-webkit-scrollbar { width: 5px; }
+        #chat-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; }
+        #picker-container { position: absolute; bottom: 100%; right: 0; display: none; z-index: 100; margin-bottom: 10px; }
+        #picker-container.active { display: block; }
+    </style>
+</head>
+<body class="font-sans text-slate-700">
+
+    <nav class="bg-white p-3 md:p-4 shadow-sm border-b sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <img src="logo.png" class="h-6 md:h-8 global-logo-img" alt="Logo" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg';">
+                <span class="font-bold tracking-tighter text-lg md:text-xl hidden sm:inline">CE BENIN</span>
+            </div>
+            
+            <div class="flex items-center gap-3 md:gap-6 text-xs md:text-sm font-semibold">
+                <a href="index.html" class="bg-blue-400 text-white px-2 py-1 md:px-3 font-bold rounded">Home</a>
+                <div class="flex items-center gap-2 md:gap-3 border-l pl-3 md:pl-6">
+                    <p class="text-slate-500 font-normal truncate max-w-[100px] md:max-w-none">Hi, <span id="display-name" class="font-bold text-slate-900">User</span></p>
+                    <button onclick="logout()" class="text-red-500 hover:underline font-medium text-[10px] md:text-xs uppercase">(Out)</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 lg:p-8">
+        
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="flex justify-between items-center bg-white px-4 md:px-6 py-2 md:py-3 border-b">
+                    <span id="live-indicator" class="flex items-center gap-2 text-slate-400 font-bold text-[10px] md:text-xs uppercase">
+                        <span id="status-dot" class="w-2 h-2 bg-slate-400 rounded-full"></span> 
+                        <span id="status-text">Checking...</span>
+                    </span>
+                    <span id="viewer-wrapper" class="text-slate-400 text-[10px] md:text-xs font-bold">
+                        VIEWERS: <span id="viewer-count">0</span>
+                    </span>
+                </div>
+                
+                <div id="twitch-player" class="aspect-video bg-black flex items-center justify-center text-slate-500 text-sm">
+                    Initializing Stream...
+                </div>
+            </div>
+
+            <div class="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200">
+                <h1 id="site-title" class="text-xl md:text-2xl font-bold text-slate-800">Connecting...</h1>
+                <p id="site-desc" class="text-slate-500 mt-2 text-sm leading-relaxed">Please wait while we sync details.</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-slate-50 p-4 border-b flex justify-between items-center cursor-pointer" onclick="toggleAnnouncements()">
+                    <h2 class="text-xs font-bold uppercase tracking-widest text-slate-400">Announcements</h2>
+                    <span id="ann-toggle" class="text-slate-400">▲</span>
+                </div>
+                <div id="ann-content" class="p-4 md:p-6">
+                    <ol id="announcement-list" class="list-decimal list-inside space-y-2 text-sm text-slate-600">
+                        <li>Loading...</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col chat-height overflow-hidden">
+                <div class="bg-[#7c3aed] p-3 md:p-4 text-white flex items-center gap-3">
+                    <h2 class="font-bold text-sm uppercase tracking-wide">Live Chat</h2>
+                </div>
+                
+                <div id="pinned-message-area" class="hidden bg-amber-50 p-3 border-b border-amber-100">
+                    <p class="text-[9px] font-bold text-amber-600 uppercase mb-1">📌 Pinned Message</p>
+                    <p id="pinned-text" class="text-xs text-amber-900 font-medium"></p>
+                </div>
+
+                <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
+
+                <div class="p-3 md:p-4 bg-slate-50 border-t relative">
+                    <div id="picker-container"></div>
+                    <div class="flex flex-col gap-2">
+                        <textarea id="chatInput" placeholder="Type a message..." class="w-full p-3 rounded-lg border outline-none resize-none h-14 md:h-16 text-sm"></textarea>
+                        <div class="flex justify-between items-center">
+                            <button id="emoji-trigger" class="text-xl transition hover:scale-110">😊</button>
+                            <button id="sendMsgBtn" onclick="sendMessage()" class="bg-[#7c3aed] text-white px-5 py-2 rounded-lg font-bold text-sm shadow-md">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 text-sm bg-white rounded-xl shadow-sm border border-slate-200">
+                <p class="text-slate-400 mb-1 font-medium">Technical Support</p>
+                <p class="font-bold text-slate-700">Help-line: <br><span class="text-blue-600 text-lg tracking-wide">+234 911 016 1605</span></p>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, enableIndexedDbPersistence, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDF0cyaNUD1RAsZQ6QnzDEuoGM4gDpDgA8",
+            authDomain: "cem8-1c967.firebaseapp.com",
+            projectId: "cem8-1c967",
+            storageBucket: "cem8-1c967.firebasestorage.app",
+            messagingSenderId: "994146989348",
+            appId: "1:994146989348:web:e40eb79d7d3dc80cc06fb1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        enableIndexedDbPersistence(db).catch(console.warn);
+
+        onSnapshot(doc(db, "settings", "global"), (d) => {
+            if(d.exists() && d.data().logoUrl) {
+                document.querySelectorAll('.global-logo-img').forEach(img => img.src = d.data().logoUrl);
+            }
+        });
+
+        const currentUser = localStorage.getItem('church_user_name');
+        if (!currentUser) { window.location.href = 'login.html'; } 
+        else { document.getElementById('display-name').innerText = currentUser; }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('event');
+        if (!eventId) { window.location.href = 'login.html'; }
+
+        let player = null;
+
+        onSnapshot(doc(db, "events", eventId), (d) => {
+            if(!d.exists()){
+                document.getElementById('site-title').innerText = "Event Not Found";
+                document.getElementById('site-desc').innerText = "Please check your link.";
+                document.getElementById('twitch-player').innerHTML = `<p class="text-white p-4">Unable to load stream.</p>`;
+                return;
+            }
+            
+            const data = d.data();
+            document.getElementById('site-title').innerText = data.title || "Live Service";
+            document.getElementById('site-desc').innerText = data.description || "";
+            
+            if(!player) {
+                document.getElementById('twitch-player').innerHTML = '';
+                var options = { width: "100%", height: "100%", channel: data.twitch || "ggraphixc", parent: ["localhost", "cem8.vercel.app"] };
+                player = new Twitch.Player("twitch-player", options);
+                player.addEventListener(Twitch.Player.ONLINE, () => updateLiveStatus(true));
+                player.addEventListener(Twitch.Player.OFFLINE, () => updateLiveStatus(false));
+            } else {
+                if (player.getChannel() !== data.twitch) player.setChannel(data.twitch);
+            }
+
+            const pinArea = document.getElementById('pinned-message-area'), pinText = document.getElementById('pinned-text');
+            if(data.pinnedMessage) { pinArea.classList.remove('hidden'); pinText.innerText = `"${data.pinnedMessage.text}" — ${data.pinnedMessage.user}`; } 
+            else { pinArea.classList.add('hidden'); }
+        });
+
+        function updateLiveStatus(isLive) {
+            const indicator = document.getElementById('live-indicator'), dot = document.getElementById('status-dot'), text = document.getElementById('status-text'), count = document.getElementById('viewer-count');
+            if (isLive) {
+                indicator.className = "flex items-center gap-2 text-red-600 font-bold text-[10px] md:text-xs uppercase";
+                dot.className = "w-2 h-2 bg-red-600 rounded-full animate-pulse";
+                text.innerText = "Live"; count.className = "text-blue-600";
+                setInterval(() => { if(player) count.innerText = player.getViewers() || "0"; }, 30000);
+            } else {
+                indicator.className = "flex items-center gap-2 text-slate-400 font-bold text-[10px] md:text-xs uppercase";
+                dot.className = "w-2 h-2 bg-slate-400 rounded-full"; text.innerText = "Offline"; count.innerText = "0"; count.className = "";
+            }
+        }
+
+        onSnapshot(collection(db, `events/${eventId}/announcements`), (snap) => {
+            const list = document.getElementById('announcement-list');
+            list.innerHTML = snap.empty ? "<li>No announcements.</li>" : '';
+            snap.forEach(d => list.innerHTML += `<li class="pb-2 border-b border-slate-50">${d.data().text}</li>`);
+        });
+
+        onSnapshot(query(collection(db, `events/${eventId}/messages`), orderBy("time", "asc"), limit(50)), (snap) => {
+            const chatBox = document.getElementById('chat-box'); chatBox.innerHTML = '';
+            snap.forEach(doc => {
+                const m = doc.data(), isAdmin = m.role === 'admin';
+                const timeString = m.time ? m.time.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...';
+                chatBox.innerHTML += `
+                    <div class="${isAdmin ? 'bg-blue-50' : 'bg-slate-50'} p-3 rounded-lg border border-slate-100">
+                        <div class="flex justify-between items-baseline mb-1">
+                            <span class="${isAdmin ? 'text-blue-600' : 'text-slate-400'} font-bold text-[10px] uppercase">${isAdmin ? '🛡️ OFFICIAL' : m.user}</span>
+                            <span class="text-[9px] text-slate-400">${timeString}</span>
+                        </div>
+                        <p class="text-slate-700 leading-tight">${m.text}</p>
+                    </div>`;
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+        window.sendMessage = async () => {
+            const input = document.getElementById('chatInput'), btn = document.getElementById('sendMsgBtn');
+            if(!input.value.trim()) return;
+            btn.innerText = "Sending..."; btn.disabled = true;
+            try { await addDoc(collection(db, `events/${eventId}/messages`), { user: currentUser, text: input.value, time: serverTimestamp() }); input.value = ""; } 
+            finally { btn.innerText = "Send"; btn.disabled = false; }
+        };
+        
+        document.getElementById('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+        const picker = picmo.createPicker({ rootElement: document.getElementById('picker-container') });
+        document.getElementById('emoji-trigger').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('picker-container').classList.toggle('active'); });
+        picker.addEventListener('emoji:select', (s) => { document.getElementById('chatInput').value += s.emoji; document.getElementById('picker-container').classList.remove('active'); });
+
+        window.logout = () => { localStorage.removeItem('church_user_name'); window.location.href = "index.html"; };
+        window.toggleAnnouncements = () => { const c = document.getElementById('ann-content'); c.classList.toggle('hidden'); document.getElementById('ann-toggle').innerText = c.classList.contains('hidden') ? '▼' : '▲'; };
+
+        const updatePresence = async () => { if(currentUser) try { await setDoc(doc(db, "presence", currentUser), { user: currentUser, lastSeen: serverTimestamp(), status: "online", event: eventId }, { merge: true }); } catch (e) {} };
+        updatePresence(); setInterval(updatePresence, 60000);
+    </script>
+</body>
+</html>
