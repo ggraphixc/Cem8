@@ -165,7 +165,7 @@
             
             if(!player) {
                 document.getElementById('twitch-player').innerHTML = '';
-                var options = { width: "100%", height: "100%", channel: data.twitch || "ggraphixc", parent: [window.location.hostname || "localhost"] };
+                var options = { width: "100%", height: "100%", channel: data.twitch || "ggraphixc", parent: ["localhost", "cem8.vercel.app"] };
                 player = new Twitch.Player("twitch-player", options);
                 player.addEventListener(Twitch.Player.ONLINE, () => updateLiveStatus(true));
                 player.addEventListener(Twitch.Player.OFFLINE, () => updateLiveStatus(false));
