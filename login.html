@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #f8f9fa; }
-        /* Inputs text-base prevents iOS auto-zoom on focus */
         input, select { font-size: 16px !important; }
     </style>
 </head>
@@ -136,7 +135,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, enableIndexedDbPersistence, collection, doc, onSnapshot, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, enableIndexedDbPersistence, collection, doc, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDF0cyaNUD1RAsZQ6QnzDEuoGM4gDpDgA8",
@@ -162,11 +161,17 @@
         const modal = document.getElementById('confirmModal');
         let tempFormData = {};
 
-        const loadEvents = async () => {
-            const snap = await getDocs(collection(db, "events"));
-            const selector = document.getElementById('eventSelector');
-            selector.innerHTML = '<option value="">-- Please Select an Event --</option>';
-            snap.forEach(doc => selector.innerHTML += `<option value="${doc.id}">${doc.data().title}</option>`);
+        // Fixed caching issue: changed from static getDocs to dynamic real-time onSnapshot
+        const loadEvents = () => {
+            onSnapshot(collection(db, "events"), (snap) => {
+                const selector = document.getElementById('eventSelector');
+                const currentSelection = selector.value;
+                selector.innerHTML = '<option value="">-- Please Select an Event --</option>';
+                snap.forEach(doc => {
+                    selector.innerHTML += `<option value="${doc.id}">${doc.data().title}</option>`;
+                });
+                if(currentSelection) selector.value = currentSelection;
+            });
         };
         loadEvents();
 

@@ -319,20 +319,18 @@
                         const r2 = document.getElementById(`sch-r2-${day}`);
                         const sch = data.schedule[day];
 
-                        if(!sch.title1 || sch.title1 === '----') {
-                            r1.className = "p-4 md:p-6 text-center text-slate-400 font-bold";
-                            r1.innerHTML = "----";
-                        } else {
-                            r1.className = "p-4 md:p-6 text-center bg-blue-50/50";
-                            r1.innerHTML = `<span class="block font-extrabold text-slate-900 mb-1">${sch.title1}</span><span class="text-xs text-blue-600 font-bold">${sch.time1}</span>`;
-                        }
+                        if(sch) {
+                            if(!sch.title1 || sch.title1 === '----') {
+                                if(r1) { r1.className = "p-4 md:p-6 text-center text-slate-400 font-bold"; r1.innerHTML = "----"; }
+                            } else {
+                                if(r1) { r1.className = "p-4 md:p-6 text-center bg-blue-50/50"; r1.innerHTML = `<span class="block font-extrabold text-slate-900 mb-1">${sch.title1}</span><span class="text-xs text-blue-600 font-bold">${sch.time1}</span>`; }
+                            }
 
-                        if(!sch.title2 || sch.title2 === '----') {
-                            r2.className = "p-4 md:p-6 text-center text-slate-400 font-bold";
-                            r2.innerHTML = "----";
-                        } else {
-                            r2.className = "p-4 md:p-6 text-center bg-blue-50/50";
-                            r2.innerHTML = `<span class="block font-extrabold text-slate-900 mb-1">${sch.title2}</span><span class="text-xs text-blue-600 font-bold">${sch.time2}</span>`;
+                            if(!sch.title2 || sch.title2 === '----') {
+                                if(r2) { r2.className = "p-4 md:p-6 text-center text-slate-400 font-bold"; r2.innerHTML = "----"; }
+                            } else {
+                                if(r2) { r2.className = "p-4 md:p-6 text-center bg-blue-50/50"; r2.innerHTML = `<span class="block font-extrabold text-slate-900 mb-1">${sch.title2}</span><span class="text-xs text-blue-600 font-bold">${sch.time2}</span>`; }
+                            }
                         }
                     });
                 }
