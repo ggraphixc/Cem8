@@ -197,7 +197,7 @@
 
             try {
                 await addDoc(collection(db, "attendance"), { ...tempFormData, time: serverTimestamp() });
-                await fetch(GOOGLE_SHEET_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tempFormData) });
+                await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vRheJpe_zwG8khDwhHYPKKz5Fjr2-o4hwdVkzhXQ91QolssylfpjRo606AXm5eRszVmi1yAKxdNl9M9/pubhtml", { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tempFormData) });
                 btn.innerText = "Done! Redirecting...";
                 setTimeout(() => { localStorage.setItem('church_user_name', tempFormData.fullName); window.location.href = `Live.html?event=${tempFormData.eventId}`; }, 800);
             } catch (err) {
