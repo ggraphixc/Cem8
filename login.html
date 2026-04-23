@@ -161,7 +161,6 @@
         const modal = document.getElementById('confirmModal');
         let tempFormData = {};
 
-        // Fixed caching issue: changed from static getDocs to dynamic real-time onSnapshot
         const loadEvents = () => {
             onSnapshot(collection(db, "events"), (snap) => {
                 const selector = document.getElementById('eventSelector');
