@@ -78,7 +78,7 @@
             <p class="text-[10px] text-slate-400 font-bold uppercase">Logged in as</p>
             <p id="current-admin-name" class="text-sm font-bold text-slate-800 truncate">...</p>
             <div id="current-role-badge" class="role-badge role-default">Loading...</div>
-            <button onclick="runWithLoader(this, 'Logging out...', logoutAdmin)" class="text-[11px] font-bold text-red-400 uppercase hover:text-red-600 transition pt-1">⬅ Secure Logout</button>
+            <button onclick="runWithLoader(this, 'Logging out...', logoutAdmin)" class="text-[12px] bg-red-400 px-3 py-1.5 rounded-lg text-white font-bold uppercase hover:bg-red-600 transition-colors ">⬅ Secure Logout</button>
         </div>
     </aside>
 
@@ -640,7 +640,7 @@
             const list = document.getElementById('admin-list');
             list.innerHTML = `<tr class="bg-blue-50/40 border-b"><td class="p-4 font-bold text-sm text-blue-800">Master Admin</td><td class="p-4"><span class="role-badge role-super">Super Admin</span></td><td class="p-4 text-xs">All Events</td><td class="p-4 text-right">Root</td></tr>`;
             allAdminsCache.forEach(a => {
-                list.innerHTML += `<tr class="border-b hover:bg-slate-50"><td class="p-4 font-bold text-sm">${a.username}</td><td class="p-4"><span class="role-badge ${a.role==='Stream Manager'?'role-stream':'role-mod'}">${a.role}</span></td><td class="p-4 text-xs">${a.assignedEvent || '—'}</td><td class="p-4 text-right">${window.adminRole === 'Super Admin' ? `<button onclick="deleteAdmin('${a.id}')" class="text-[10px] text-red-500 font-bold uppercase">Revoke</button>` : '—'}</td></tr>`;
+                list.innerHTML += `<tr class="border-b hover:bg-slate-50"><td class="p-4 font-bold text-sm">${a.username}</td><td class="p-4"><span class="role-badge ${a.role==='Stream Manager'?'role-stream':'role-mod'}">${a.role}</span></td><td class="p-4 text-xs">${a.assignedEvent || '—'}</td><td class="p-4 text-right">${window.adminRole === 'Super Admin' ? `<button onclick="deleteAdmin('${a.id}')" class="text-[12px] bg-red-500 px-3 py-1.5 rounded-lg text-white font-bold">Revoke</button>` : '—'}</td></tr>`;
             });
             const ms = document.getElementById('reassign-mod-select'); ms.innerHTML = '<option value="">— Select —</option>';
             allAdminsCache.filter(a => a.role === 'Chat Moderator').forEach(a => ms.innerHTML += `<option value="${a.id}">${a.username}</option>`);
@@ -674,7 +674,7 @@
             const table = document.getElementById('event-list-table'); table.innerHTML = '';
             const vis = window.adminRole === 'Stream Manager' ? allEventsCache.filter(e => e.createdBy === window.adminUsername) : allEventsCache;
             vis.forEach(ev => {
-                table.innerHTML += `<tr class="border-b hover:bg-slate-50"><td class="p-4"><p class="font-bold text-sm">${ev.title}</p><code class="text-[10px] text-blue-500">${ev.id}</code></td><td class="p-4 text-xs">${ev.twitch}</td><td class="p-4 text-[10px]">${ev.createdBy||'System'}</td><td class="p-4 text-right"><button onclick="manageEvent('${ev.id}')" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[10px]">Controls</button> <button onclick="deleteEvent('${ev.id}')" class="text-red-500 text-[10px] ml-1">Del</button></td></tr>`;
+                table.innerHTML += `<tr class="border-b hover:bg-slate-50"><td class="p-4"><p class="font-bold text-sm">${ev.title}</p><code class="text-[10px] text-blue-500">${ev.id}</code></td><td class="p-4 text-xs">${ev.twitch}</td><td class="p-4 text-[10px]">${ev.createdBy||'System'}</td><td class="p-4 text-right"><button onclick="manageEvent('${ev.id}')" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[12px]">Controls</button> <button onclick="deleteEvent('${ev.id}')" class="bg-red-500 text-white text-[12px] px-3 py-1.5 rounded-lg ml-1">Delete</button></td></tr>`;
             });
         });
 
@@ -726,7 +726,7 @@
                 const box = document.getElementById('admin-chat-box'); box.innerHTML = '';
                 snap.docs.reverse().forEach(d => {
                     const m = d.data(), isA = m.role === 'admin';
-                    box.innerHTML += `<div class="p-3 rounded-xl border ${isA?'bg-blue-50':'bg-white'} mb-2"><div class="flex justify-between"><span class="text-[10px] font-bold">${m.user}</span> <div>${!isA?`<button onclick="pinMessage('${m.text}', '${m.user}')" class="text-[9px] text-amber-500 mr-2">Pin</button>`:''}<button onclick="deleteMsg('${d.id}')" class="text-[9px] text-red-400">Del</button></div></div><p class="text-sm">${m.text}</p></div>`;
+                    box.innerHTML += `<div class="p-3 rounded-xl border ${isA?'bg-blue-50':'bg-white'} mb-2"><div class="flex justify-between"><span class="text-[10px] font-bold">${m.user}</span> <div>${!isA?`<button onclick="pinMessage('${m.text}', '${m.user}')" class="text-[13px] text-white px-1 py-1 font-bold rounded mr-2">📌</button>`:''}<button onclick="deleteMsg('${d.id}')" class="text-[13px] text-white px-1 py-1 font-bold rounded mr-2">❌</button></div></div><p class="text-sm">${m.text}</p></div>`;
                 });
                 box.scrollTop = box.scrollHeight;
             });
